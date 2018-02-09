@@ -186,9 +186,9 @@ class MamdaniAlgorithm:
 
 	def process(self, in_crisp_values):
 		in_fuzzy_values = self.fuzzificate(in_crisp_values)
-		print(list(str(v) for v in in_fuzzy_values.values()))
+		# print(list(str(v) for v in in_fuzzy_values.values()))
 		out_fuzzy_values = self.apply_rules(in_fuzzy_values)
-		print(list(str(v) for v in out_fuzzy_values.values()))
+		# print(list(str(v) for v in out_fuzzy_values.values()))
 		out_crisp_values = self.defuzzificate(out_fuzzy_values)
 
 		return out_crisp_values

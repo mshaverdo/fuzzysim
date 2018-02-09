@@ -155,6 +155,7 @@ class Simulator:
 	Manage controllers, generate ticks, collects stats
 	"""
 	time_quantum = 0.001
+	j_stats_limit = 100
 
 	def __init__(self, physics, controller):
 		"""
@@ -194,6 +195,7 @@ class Simulator:
 
 			# calculate jerk for current model time moment as da/dt:
 			j = (a - prev_a) / (self.time_quantum)
+			j = math.copysign(min(abs(j), self.j_stats_limit), j)
 			prev_a = a
 
 			self.stats_t.append(t)

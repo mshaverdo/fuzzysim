@@ -1,4 +1,7 @@
 import matplotlib.pyplot as plt
+import csv
+import pprint
+
 
 def plot_datasets(datasets):
 	"""
@@ -37,6 +40,11 @@ def plot_datasets(datasets):
 
 		if 'sub' in ds:
 			for sub in ds['sub']:
+				# ax.set_ylabel(sub['yl'])
+				# ax.set_xlabel(sub['xl'])
+				# title = "%s from %s" % (sub['yl'], sub['xl']) if 'title' not in sub else sub['title']
+				# f.canvas.set_window_title(title)
+
 				label = 'yl' in sub and sub['yl']
 				marker = 'ym' in sub and sub['ym'] or None
 				ax.plot(sub['x'], sub['y'], label=label, marker=marker)
@@ -50,14 +58,8 @@ def plot_datasets(datasets):
 	plt.show()
 
 
-def show_charts_simulator(simulator):
-	"""
-	Prepare datasets and plot it
-	"""
-	stats_t, stats_s, stats_v, stats_a, stats_j = simulator.stats_t, simulator.stats_s, simulator.stats_v, simulator.stats_a, simulator.stats_j
-
-
-	datasets = [
+def get_datasets(stats_t, stats_s, stats_v, stats_a, stats_j):
+	return [
 		{'x': stats_t, 'y': stats_s, 'xl': 'Time, s', 'yl': 'Distance, m'},
 		{'x': stats_t, 'y': stats_v, 'xl': 'Time, s', 'yl': 'Speed, m/s'},
 		{'x': stats_t, 'y': stats_a, 'xl': 'Time, s', 'yl': 'Acceleration, m/s^2'},
@@ -67,4 +69,45 @@ def show_charts_simulator(simulator):
 		# {'x': stats_, 'y': stats_, 'xl': 'Time, s', 'yl': ''},
 	]
 
+
+def show_charts_csv(csv_file_name):
+	experiments = []
+	experiment = None
+	with open(csv_file_name, newline='') as csvfile:
+		reader = csv.reader(csvfile, delimiter=',', quotechar='\\')
+		for row in reader:
+			if row[0] == "t":
+				# new experiment
+				if experiment is not None:
+					experiments.append(experiment)
+				experiment = {'stats_t': [], 'stats_s': [], 'stats_v': [], 'stats_a': [], 'stats_j': []}
+				continue
+
+			experiment['stats_t'].append(float(row[0]))
+			experiment['stats_s'].append(float(row[1]))
+			experiment['stats_v'].append(float(row[2]))
+			experiment['stats_a'].append(float(row[3]))
+			experiment['stats_j'].append(float(row[4]))
+
+	experiments.append(experiment)
+
+	datasets = []
+	for en, experiment in enumerate(experiments):
+		experiment_datasets = get_datasets(**experiment)
+
+		for i, ds in enumerate(experiment_datasets):
+			ds['yl'] = "(%d) %s" % (en, ds['yl'])
+			if i == len(datasets):
+				datasets.append({'sub': []})
+			datasets[i]['sub'].append(ds)
+
+	plot_datasets(datasets)
+
+
+def show_charts_simulator(simulator):
+	"""
+	Prepare datasets and plot it
+	"""
+	stats_t, stats_s, stats_v, stats_a, stats_j = simulator.stats_t, simulator.stats_s, simulator.stats_v, simulator.stats_a, simulator.stats_j
+	datasets = get_datasets(stats_t, stats_s, stats_v, stats_a, stats_j)
 	plot_datasets(datasets)
