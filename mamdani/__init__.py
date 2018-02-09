@@ -13,11 +13,11 @@ class Term:
 		self.d = d
 
 	def degree(self, crisp_value):
-		if self.a <= crisp_value <= self.b:
+		if self.a < crisp_value < self.b:
 			return (crisp_value - self.a) / (self.b - self.a)
-		elif self.b < crisp_value < self.c:
+		elif self.b <= crisp_value <= self.c:
 			return 1
-		elif self.c <= crisp_value <= self.d:
+		elif self.c < crisp_value < self.d:
 			return (self.d - crisp_value) / (self.d - self.c)
 		else:
 			return 0
@@ -80,6 +80,8 @@ class FuzzyValue:
 		)
 
 	def get_membership(self, term):
+		if term.name not in self.memberships:
+			raise RuntimeError("%s : %s" % (self, term))
 		return self.memberships[term.name]
 
 	def add_membership(self, membership, unite=True):
@@ -110,6 +112,8 @@ class FuzzyValue:
 
 	def get_center_of_mass_fast(self):
 		weight = self.integrate()
+		if weight == 0:
+			return 0
 		_, center_x = self.integrate(weight/2)
 		return center_x
 
@@ -182,9 +186,9 @@ class MamdaniAlgorithm:
 
 	def process(self, in_crisp_values):
 		in_fuzzy_values = self.fuzzificate(in_crisp_values)
-		# print(list(str(v) for v in in_fuzzy_values.values()))
+		print(list(str(v) for v in in_fuzzy_values.values()))
 		out_fuzzy_values = self.apply_rules(in_fuzzy_values)
-		# print(list(str(v) for v in out_fuzzy_values.values()))
+		print(list(str(v) for v in out_fuzzy_values.values()))
 		out_crisp_values = self.defuzzificate(out_fuzzy_values)
 
 		return out_crisp_values
