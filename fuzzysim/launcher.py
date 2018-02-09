@@ -31,7 +31,7 @@ def launch(argv):
 
 
 def simulate(distance, speed, latency, way_config_file, brake_controller, is_plot_graphs, is_print_stats):
-	brake_module = importlib.import_module("brake_controller.dumb")
+	brake_module = importlib.import_module("brake_controller." + brake_controller)
 
 	# print(brake_module.dumb)
 
