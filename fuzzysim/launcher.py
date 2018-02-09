@@ -13,8 +13,8 @@ parser.add_argument('speed', type=int, help="initial speed, m/s")
 parser.add_argument('-w', '--way', type=str, dest='way_config_file', default='', help="way config file")
 parser.add_argument('-l', '--latency', type=float, dest='latency', default=0, help="acceleration appying latency, seconds")
 parser.add_argument('-c', '--controller', type=str, dest='brake_controller', default='dumb', help="brake controller module")
-parser.add_argument('-p', '--plot', type=bool, dest='plot_graphs', default=True, help="Plot graphs")
-parser.add_argument('-s', '--stats', type=bool, dest='print_stats', default=False, help="Print stats csv into stdout")
+parser.add_argument('-p', '--plot', action='store_true', dest='plot_graphs', default=True, help="Plot graphs")
+parser.add_argument('-s', '--stats', action='store_true', dest='print_stats', default=False, help="Print stats csv into stdout")
 
 
 def launch(argv):
@@ -30,7 +30,7 @@ def launch(argv):
 	)
 
 
-def simulate(distance, speed, latency, way_config_file, brake_controller, plot_graphs, print_stats):
+def simulate(distance, speed, latency, way_config_file, brake_controller, is_plot_graphs, is_print_stats):
 	brake_module = importlib.import_module("brake_controller.dumb")
 
 	# print(brake_module.dumb)
@@ -42,7 +42,7 @@ def simulate(distance, speed, latency, way_config_file, brake_controller, plot_g
 
 	result, t, s, v, a = simulator.start()
 
-	if print_stats:
+	if is_print_stats:
 		print_stats(simulator)
 	else:
 		if result:
@@ -52,7 +52,7 @@ def simulate(distance, speed, latency, way_config_file, brake_controller, plot_g
 
 		print("T: %.3f    S: %.3f    V: %.3f    a: %.3f" % (t, s, v, a))
 
-	if plot_graphs:
+	if is_plot_graphs:
 		fuzzysim.charts.show_charts_simulator(simulator)
 
 
@@ -66,4 +66,4 @@ def print_stats(simulator):
 
 	print("t,s,v,a")
 	for i, v in enumerate(stats_t):
-		print("%.4f,%.4f,%.4f,%.4f,%.4f," %  (stats_t[i], stats_s[i], stats_v[i], stats_a[i], stats_j[i]))
+		print("%.4f,%.4f,%.4f,%.4f,%.4f" %  (stats_t[i], stats_s[i], stats_v[i], stats_a[i], stats_j[i]))
