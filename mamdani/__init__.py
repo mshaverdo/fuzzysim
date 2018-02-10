@@ -4,6 +4,38 @@ import time
 import numpy
 
 
+# Предложение: использовать термы не интервальные, а прямоугольные: задавать им максивмальную высоту:
+# это должно сильно улучшить точность и упростить генерацию правил: мы можем аппроксимировать боковые
+# участки трапеций такими термами с высотой менее единицы
+class IntervalTerm:
+	def __init__(self, name, a, b):
+		self.name = name
+		self.a = a
+		self.b = b
+		self.width = abs(a - b)
+
+	def degree(self, crisp_value):
+		if self.a <= crisp_value <= self.b:
+			return 1
+		else:
+			return 0
+
+
+class RectangleTerm:
+	def __init__(self, name, a, b, height):
+		self.name = name
+		self.a = a
+		self.b = b
+		self.height = height
+		self.width = abs(a - b)
+
+	def degree(self, crisp_value):
+		if self.a <= crisp_value <= self.b:
+			return self.height
+		else:
+			return 0
+
+
 class Term:
 	def __init__(self, name, a, b, c, d):
 		self.name = name
@@ -64,6 +96,45 @@ class Membership:
 		return "%s(%.2f)" % (self.term.name, self.degree)
 
 
+class IntervalFuzzyValue:
+	"""
+	Термы выходной переменной должны быть
+	- заданы на непрерывном интервале,
+	- должны быть отсортированы в порядке следования по области определения
+	"""
+
+	def __init__(self, variable, memberships):
+		self.variable = variable
+		self.memberships = {v.term.name: v for v in memberships.values()}
+		self.sorted_memberships = sorted(memberships.values(), key=lambda x: x.term.a)
+
+	def get_membership_mass(self, membership):
+		return membership.term.width * membership.degree
+
+	def get_center_of_mass(self):
+		masses = [0] * len(self.sorted_memberships)
+		total_mass = 0
+		for i, m in enumerate(self.sorted_memberships):
+			masses[i] = self.get_membership_mass(m)
+			total_mass += masses[i]
+
+		half_mass = total_mass / 2
+		center = 0
+		for i, v in enumerate(masses):
+			half_mass -= v
+			if half_mass <= 0:
+				ratio = 1 - abs(half_mass / v)
+				center += ratio * self.sorted_memberships[i].term.width
+				return center
+
+			center += self.sorted_memberships[i].term.width
+
+
+class RectangleFuzzyValue(IntervalFuzzyValue):
+	def get_membership_mass(self, membership):
+		return membership.term.width * min(membership.degree, membership.term.height)
+
+
 class FuzzyValue:
 	integration_delta_ratio = 0.01
 
@@ -104,7 +175,7 @@ class FuzzyValue:
 		delta = (self.variable.max - self.variable.min) * self.integration_delta_ratio
 		result = 0
 		for x in numpy.arange(self.variable.min, self.variable.max, delta):
-			result += self.degree(x)
+			result += self.degree(x) * delta
 			if upto is not None and result > upto:
 				return result, x
 
@@ -114,7 +185,7 @@ class FuzzyValue:
 		weight = self.integrate()
 		if weight == 0:
 			return 0
-		_, center_x = self.integrate(weight/2)
+		_, center_x = self.integrate(weight / 2)
 		return center_x
 
 	def get_center_of_mass(self):
@@ -233,10 +304,85 @@ if __name__ == '__main__':
 	print(list(str(v) for v in out_fuzzy_values.values()))
 	# ["FuzzyValue(W, 0.00, ['Wl(0.33)', 'Wm(0.50)', 'Ws(0.33)'])"]
 
-	start = time.time()
 	out_crisp_values = alg.defuzzificate(out_fuzzy_values)
 	print(out_crisp_values)
-	#{'W': 5.0}
-	print(time.time() - start)
+	# {'W': 5.0}
+
+	# test interval fuzzy value
+	# use 3x ratio for traditional fuzzy terms to approximate trapezoid terms:
+	# 2 interval terms for leg parts of trapezod term and 1 for base part
+	# so, in this benchmark we use 9 intervalTerms to approximate output var W with 3 trapezoid terms
+	Its = [
+		IntervalTerm('I0', 0, 0.5),
+		IntervalTerm('I1', 0.5, 1),
+		IntervalTerm('I2', 1, 2.5),
+		IntervalTerm('I3', 2.5, 4),
+		IntervalTerm('I4', 4, 6),
+		IntervalTerm('I5', 6, 7.2),
+		IntervalTerm('I6', 7.2, 9),
+		IntervalTerm('I7', 9, 9.5),
+		IntervalTerm('I8', 9.5, 10),
+	]
+	I = Variable('I', Its, 0, 10)
+
+	degrees = [1, 1, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, ]
+	Imemberships = {"I%d" % i: Membership(Its[i], v) for i, v in enumerate(degrees)}
+	ifv = IntervalFuzzyValue(I, Imemberships)
+
+	center = ifv.get_center_of_mass()
+	# center == 4.666666666666666
+	print("Interval center", center)
+
+	# test rectangle fuzzy value
+	# use 3x ratio for traditional fuzzy terms to approximate trapezoid terms:
+	# 2 interval terms for leg parts of trapezoid term and 1 for base part
+	# so, in this benchmark we use 9 intervalTerms to approximate output var W with 3 trapezoid terms
+	Rts = [
+		RectangleTerm('R0', 0, 0.5, 0.6),
+		RectangleTerm('R1', 0.5, 1, 0.6),
+		RectangleTerm('R2', 1, 2.5, 0.6),
+		RectangleTerm('R3', 2.5, 4, 0.6),
+		RectangleTerm('R4', 4, 6, 1),
+		RectangleTerm('R5', 6, 7.2, 0.6),
+		RectangleTerm('R6', 7.2, 9, 0.6),
+		RectangleTerm('R7', 9, 9.5, 1),
+		RectangleTerm('R8', 9.5, 10, 1),
+	]
+	R = Variable('R', Rts, 0, 10)
+
+	degrees = [1, 1, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, ]
+	Rmemberships = {"R%d" % i: Membership(Rts[i], v) for i, v in enumerate(degrees)}
+	rfv = RectangleFuzzyValue(R, Rmemberships)
+
+	center = rfv.get_center_of_mass()
+	# center == 5.0
+	print("Rectangle center", center)
+
+	# benchmark
+	iterations = 10000
+	start = time.time()
+	for i in range(0, iterations):
+		in_fuzzy_values = alg.fuzzificate(in_crisp_values)
+	print("%d alg.fuzzificate takes %.1f ms" % (iterations, 1000 * (time.time() - start)))
+
+	start = time.time()
+	for i in range(0, iterations):
+		out_fuzzy_values = alg.apply_rules(in_fuzzy_values)
+	print("%d alg.apply_rules takes %.1f ms" % (iterations, 1000 * (time.time() - start)))
+
+	start = time.time()
+	for i in range(0, iterations):
+		out_crisp_values = alg.defuzzificate(out_fuzzy_values)
+	print("%d alg.defuzzificate takes %.1f ms" % (iterations, 1000 * (time.time() - start)))
+
+	start = time.time()
+	for i in range(0, iterations):
+		center = ifv.get_center_of_mass()
+	print("%d ifv.get_center_of_mass takes %.1f ms" % (iterations, 1000 * (time.time() - start)))
+
+	start = time.time()
+	for i in range(0, iterations):
+		center = rfv.get_center_of_mass()
+	print("%d rfv.get_center_of_mass takes %.1f ms" % (iterations, 1000 * (time.time() - start)))
 
 # alg.process(in_crisp_values)
