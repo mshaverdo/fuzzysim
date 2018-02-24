@@ -7,6 +7,7 @@ import fuzzysim
 import fuzzysim.charts
 import importlib
 import fuzzysim.charts
+import time
 
 plot_parser = argparse.ArgumentParser(description='Fuzzysim plot launcher cli')
 plot_parser.add_argument('csv_file', type=str, help="csv file name")
@@ -17,7 +18,7 @@ sim_parser.add_argument('speed', type=int, help="initial speed, m/s")
 sim_parser.add_argument('-w', '--way', type=str, dest='way_config_file', default='', help="way config file")
 sim_parser.add_argument('-l', '--latency', type=float, dest='latency', default=0, help="acceleration appying latency, seconds")
 sim_parser.add_argument('-c', '--controller', type=str, dest='brake_controller', default='dumb', help="brake controller module")
-sim_parser.add_argument('-n', '--noplot', action='store_true', dest='noplot_graphs', default=True, help="Don't plot graphs")
+sim_parser.add_argument('-n', '--noplot', action='store_true', dest='noplot_graphs', default=False, help="Don't plot graphs")
 sim_parser.add_argument('-s', '--stats', action='store_true', dest='print_stats', default=False, help="Print stats csv into stdout")
 
 
@@ -50,7 +51,9 @@ def simulate(distance, speed, latency, way_config_file, brake_controller, is_plo
 	controller = fuzzysim.CartController(physics, brake_module, 0)
 	simulator = fuzzysim.Simulator(physics, controller)
 
+	start = time.time()
 	result, t, s, v, a = simulator.start()
+	stop = time.time()
 
 	if is_print_stats:
 		print_stats(simulator)
@@ -61,6 +64,7 @@ def simulate(distance, speed, latency, way_config_file, brake_controller, is_plo
 			print("!!!!!!!!!!!!!!!!!!! Platform CRASHED !!!!!!!!!!!!!!!!!!!!!")
 
 		print("T: %.3f    S: %.3f    V: %.3f    a: %.3f" % (t, s, v, a))
+		print("Simulation time: %.3f seconds" % (stop - start))
 
 	if is_plot_graphs:
 		fuzzysim.charts.show_charts_simulator(simulator)

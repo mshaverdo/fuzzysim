@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import csv
 import pprint
+import math
 
 
 def plot_datasets(datasets):
@@ -18,9 +19,16 @@ def plot_datasets(datasets):
 
 		ax.grid(True)
 
-		if 'x' in ds:
-			ax.set_ylabel(ds['yl'])
+		if 'xl' in ds:
 			ax.set_xlabel(ds['xl'])
+		if 'yl' in ds:
+			ax.set_ylabel(ds['yl'])
+
+		if 'xl' in ds and 'yl' in ds:
+			title = "%s from %s" % (ds['yl'], ds['xl'])
+			f.canvas.set_window_title(title)
+
+		if 'x' in ds:
 			title = "%s from %s" % (ds['yl'], ds['xl']) if 'title' not in ds else ds['title']
 			f.canvas.set_window_title(title)
 			marker = 'y1m' in ds and ds['y1m'] or None
@@ -96,12 +104,35 @@ def show_charts_csv(csv_file_name):
 		experiment_datasets = get_datasets(**experiment)
 
 		for i, ds in enumerate(experiment_datasets):
-			ds['yl'] = "(%d) %s" % (en, ds['yl'])
 			if i == len(datasets):
 				datasets.append({'sub': []})
+
+			datasets[i]['xl'] = ds['xl']
+			datasets[i]['yl'] = ds['yl']
+			ds['yl'] = "(%d) %s" % (en, ds['yl'])
 			datasets[i]['sub'].append(ds)
 
+	show_stats(experiments)
 	plot_datasets(datasets)
+
+
+def show_stats(experiments):
+	if len(experiments) < 2:
+		return
+
+	gauge = experiments[0]
+	stats = {'stats_s':{}, 'stats_v':{}, 'stats_a':{}, 'stats_j':{}}
+	for en, experiment in enumerate(experiments):
+		for param in stats:
+			sum = 0
+			for i, s in enumerate(experiment[param]):
+				G = len(gauge[param]) > i and gauge[param][i] or 0
+				sum += (s - G)**2
+			sum /= len(experiment[param])
+			stats[param][en] = math.sqrt(sum)
+
+	print("Normalized quadratic Parameters deviations by experiment:")
+	pprint.pprint(stats)
 
 
 def show_charts_simulator(simulator):

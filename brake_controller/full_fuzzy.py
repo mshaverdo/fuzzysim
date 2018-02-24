@@ -24,11 +24,12 @@ class Controller:
 		S_sch = [0, 25, 75, 100]
 		V_sch = [0, 5, 15, 20]
 		A_sch = [0, 0, 5, 10, 10]
+		A_sch = [0, 0, 4.75, 7, 7]  # optimal to stop
 
 		# experiment nuber 3
-		S_sch = [0, 50, 50, 100]
-		V_sch = [0, 10, 10, 20]
-		A_sch = [0, 0, 5, 10, 10]
+		# S_sch = [0, 50, 50, 100]
+		# V_sch = [0, 10, 10, 20]
+		# A_sch = [0, 0, 5, 10, 10]
 
 
 
@@ -55,10 +56,10 @@ class Controller:
 		# Vl = Term('Vl', 0, 30, inf, inf)
 		# V = Variable('V', [Vs, Vl], 0, 20)
 		#
-		As = Term('As', 0, 0, 0, 5)
-		Am = Term('Am', 0, 5, 5, 10)
-		Al = Term('Al', 5, 10, inf, inf)
-		A = Variable('A', [As, Am, Al], 0, 10)
+		# As = Term('As', 0, 0, 0, 5)
+		# Am = Term('Am', 0, 5, 5, 10)
+		# Al = Term('Al', 5, 10, inf, inf)
+		# A = Variable('A', [As, Am, Al], 0, 10)
 
 
 

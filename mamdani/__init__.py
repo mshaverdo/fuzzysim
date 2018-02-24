@@ -7,19 +7,6 @@ import numpy
 # Предложение: использовать термы не интервальные, а прямоугольные: задавать им максивмальную высоту:
 # это должно сильно улучшить точность и упростить генерацию правил: мы можем аппроксимировать боковые
 # участки трапеций такими термами с высотой менее единицы
-class IntervalTerm:
-	def __init__(self, name, a, b):
-		self.name = name
-		self.a = a
-		self.b = b
-		self.width = abs(a - b)
-
-	def degree(self, crisp_value):
-		if self.a <= crisp_value <= self.b:
-			return 1
-		else:
-			return 0
-
 
 class RectangleTerm:
 	def __init__(self, name, a, b, height):
@@ -29,11 +16,19 @@ class RectangleTerm:
 		self.height = height
 		self.width = abs(a - b)
 
+		if self.width > 10e100:
+			raise ValueError("RectangleTerm width can't be infinite")
+
 	def degree(self, crisp_value):
 		if self.a <= crisp_value <= self.b:
 			return self.height
 		else:
 			return 0
+
+
+class IntervalTerm(RectangleTerm):
+	def __init__(self, name, a, b):
+		super().__init__(name, a, b, 1)
 
 
 class Term:
@@ -62,12 +57,21 @@ class Variable:
 		self.min = min
 		self.max = max
 
-	def get_fuzzy_value(self, crisp_value):
+	def get_fuzzy_value(self, crisp_value=None):
 		"""
 
 		:param crisp_value:
 		:return: FuzzyValue
 		"""
+		if crisp_value is None:
+			term = list(self.terms.values())[0]
+			if type(term) is IntervalTerm:
+				return IntervalFuzzyValue(self, crisp_value, {})
+			elif type(term) is RectangleTerm:
+				return RectangleFuzzyValue(self, crisp_value, {})
+			else:
+				return FuzzyValue(self, None, {})
+
 		memberships = {i: Membership(v, v.degree(crisp_value)) for i, v in self.terms.items()}
 		return FuzzyValue(self, crisp_value, memberships)
 
@@ -96,45 +100,6 @@ class Membership:
 		return "%s(%.2f)" % (self.term.name, self.degree)
 
 
-class IntervalFuzzyValue:
-	"""
-	Термы выходной переменной должны быть
-	- заданы на непрерывном интервале,
-	- должны быть отсортированы в порядке следования по области определения
-	"""
-
-	def __init__(self, variable, memberships):
-		self.variable = variable
-		self.memberships = {v.term.name: v for v in memberships.values()}
-		self.sorted_memberships = sorted(memberships.values(), key=lambda x: x.term.a)
-
-	def get_membership_mass(self, membership):
-		return membership.term.width * membership.degree
-
-	def get_center_of_mass(self):
-		masses = [0] * len(self.sorted_memberships)
-		total_mass = 0
-		for i, m in enumerate(self.sorted_memberships):
-			masses[i] = self.get_membership_mass(m)
-			total_mass += masses[i]
-
-		half_mass = total_mass / 2
-		center = 0
-		for i, v in enumerate(masses):
-			half_mass -= v
-			if half_mass <= 0:
-				ratio = 1 - abs(half_mass / v)
-				center += ratio * self.sorted_memberships[i].term.width
-				return center
-
-			center += self.sorted_memberships[i].term.width
-
-
-class RectangleFuzzyValue(IntervalFuzzyValue):
-	def get_membership_mass(self, membership):
-		return membership.term.width * min(membership.degree, membership.term.height)
-
-
 class FuzzyValue:
 	integration_delta_ratio = 0.01
 
@@ -144,7 +109,8 @@ class FuzzyValue:
 		self.memberships = {v.term.name: v for v in memberships.values()}
 
 	def __str__(self):
-		return "FuzzyValue(%s, %.2f, %s)" % (
+		return "%s(%s, %.2f, %s)" % (
+			type(self),
 			self.variable.name,
 			self.precise_value or 0,
 			list(str(v) for v in self.memberships.values())
@@ -181,17 +147,54 @@ class FuzzyValue:
 
 		return result
 
-	def get_center_of_mass_fast(self):
+	def get_center_of_mass(self):
 		weight = self.integrate()
 		if weight == 0:
 			return 0
 		_, center_x = self.integrate(weight / 2)
 		return center_x
 
+
+class IntervalFuzzyValue(FuzzyValue):
+	"""
+	Термы выходной переменной должны быть
+	- заданы на непрерывном интервале,
+	- должны быть отсортированы в порядке следования по области определения
+	"""
+
+	def __init__(self, variable, precise_value, memberships):
+		super().__init__(variable, precise_value, memberships)
+		self.sorted_memberships = sorted(memberships.values(), key=lambda x: x.term.a)
+
+	def add_membership(self, membership, unite=True):
+		super().add_membership(membership, unite)
+		self.sorted_memberships = sorted(self.memberships.values(), key=lambda x: x.term.a)
+
+	def get_membership_mass(self, membership):
+		return  membership.term.width * membership.degree
+
 	def get_center_of_mass(self):
-		result1, err = quad(lambda x: x * self.degree(x), self.variable.min, self.variable.max)
-		result2, err = quad(lambda x: self.degree(x), self.variable.min, self.variable.max)
-		return result1 / result2
+		masses = [0] * len(self.sorted_memberships)
+		total_mass = 0
+		for i, m in enumerate(self.sorted_memberships):
+			masses[i] = self.get_membership_mass(m)
+			total_mass += masses[i]
+
+		half_mass = total_mass / 2
+		center = 0
+		for i, v in enumerate(masses):
+			half_mass -= v
+			if half_mass <= 0:
+				ratio = 1 - abs(half_mass / v)
+				center += ratio * self.sorted_memberships[i].term.width
+				return center
+
+			center += self.sorted_memberships[i].term.width
+
+
+class RectangleFuzzyValue(IntervalFuzzyValue):
+	def get_membership_mass(self, membership):
+		return membership.term.width * min(membership.degree, membership.term.height)
 
 
 class Cond:
@@ -237,13 +240,13 @@ class MamdaniAlgorithm:
 				for c
 				in r.conditions
 			)
-			activated_degree = min(memberships).degree
+			aggregated_degree = min(memberships).degree
 
 			for c in r.conclusions:
 				if c.variable.name not in out_fuzzy_values:
-					out_fuzzy_values[c.variable.name] = FuzzyValue(c.variable, None, {})
+					out_fuzzy_values[c.variable.name] = c.variable.get_fuzzy_value(None)
 
-				out_fuzzy_values[c.variable.name].add_membership(Membership(c.term, activated_degree))
+				out_fuzzy_values[c.variable.name].add_membership(Membership(c.term, aggregated_degree))
 
 		return out_fuzzy_values
 
@@ -251,7 +254,7 @@ class MamdaniAlgorithm:
 		"""Returns crisp values, mapped to out_variables"""
 		result = {}
 		for v in self.out_variables.values():
-			result[v.name] = out_fuzzy_values[v.name].get_center_of_mass_fast()
+			result[v.name] = out_fuzzy_values[v.name].get_center_of_mass()
 
 		return result
 
@@ -278,8 +281,16 @@ if __name__ == '__main__':
 
 	Ws = Term('Ws', 0, 0, 1, 3)
 	Wm = Term('Wm', 2, 4, 6, 8)
-	Wl = Term('Wl', 6, 9, inf, inf)
+	Wl = Term('Wl', 6, 8, inf, inf)
 	W = Variable('W', [Ws, Wm, Wl], 0, 10)
+
+	#to test speed
+	# Ws = RectangleTerm('Ws', 0, 2, 1)
+	# Wsm = RectangleTerm('Ws', 2, 3, 0.5)
+	# Wm = RectangleTerm('Ws', 3, 6.5, 1)
+	# Wml = RectangleTerm('Ws', 6.5, 7.5, 0.5)
+	# Wl = RectangleTerm('Wl', 7.5, 10, 1)
+	# W = Variable('W', [Ws, Wsm, Wm, Wml, Wl], 0, 10)
 
 	in_variables = [A, B]
 
@@ -327,7 +338,7 @@ if __name__ == '__main__':
 
 	degrees = [1, 1, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, ]
 	Imemberships = {"I%d" % i: Membership(Its[i], v) for i, v in enumerate(degrees)}
-	ifv = IntervalFuzzyValue(I, Imemberships)
+	ifv = IntervalFuzzyValue(I, None, Imemberships)
 
 	center = ifv.get_center_of_mass()
 	# center == 4.666666666666666
@@ -352,7 +363,7 @@ if __name__ == '__main__':
 
 	degrees = [1, 1, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, ]
 	Rmemberships = {"R%d" % i: Membership(Rts[i], v) for i, v in enumerate(degrees)}
-	rfv = RectangleFuzzyValue(R, Rmemberships)
+	rfv = RectangleFuzzyValue(R, None, Rmemberships)
 
 	center = rfv.get_center_of_mass()
 	# center == 5.0
