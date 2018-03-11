@@ -5,12 +5,19 @@ launcher.py parses cli args and run simulator in appropriately mode
 import argparse
 import fuzzysim
 import fuzzysim.charts
+import mamdani.generator
 import importlib
 import fuzzysim.charts
 import time
+import json
 
 plot_parser = argparse.ArgumentParser(description='Fuzzysim plot launcher cli')
 plot_parser.add_argument('csv_file', type=str, help="csv file name")
+
+gen_parser = argparse.ArgumentParser(description='Fuzzysim config generator launcher cli')
+gen_parser.add_argument('csv_file', type=str, help="csv file name")
+gen_parser.add_argument('terms', type=int, help="generation terms conut")
+gen_parser.add_argument('-i', '--interval', action='store_true', dest='interval', default=False, help="interval a")
 
 sim_parser = argparse.ArgumentParser(description='Fuzzysim simulator launcher cli')
 sim_parser.add_argument('distance', type=int, help="initial distance, meters")
@@ -20,10 +27,20 @@ sim_parser.add_argument('-l', '--latency', type=float, dest='latency', default=0
 sim_parser.add_argument('-c', '--controller', type=str, dest='brake_controller', default='dumb', help="brake controller module")
 sim_parser.add_argument('-n', '--noplot', action='store_true', dest='noplot_graphs', default=False, help="Don't plot graphs")
 sim_parser.add_argument('-s', '--stats', action='store_true', dest='print_stats', default=False, help="Print stats csv into stdout")
+sim_parser.add_argument('-g', '--generate', dest='generate_csv', type=str, default="", help="generate rules from csv")
+sim_parser.add_argument('-t', '--terms', dest='terms', type=int, default="3", help="generation terms conut")
+
+
+def generate(argv):
+	args = gen_parser.parse_args(argv)
+	config = mamdani.generator.generate_config(args.csv_file, args.terms, args.interval)
+	print(json.dumps(config, indent=4))
+
 
 
 def launch(argv):
 	args = sim_parser.parse_args(argv)
+
 	simulate(
 		args.distance,
 		args.speed,

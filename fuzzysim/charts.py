@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import csv
 import pprint
 import math
+import mamdani
 
 
 def plot_datasets(datasets):
@@ -142,3 +143,30 @@ def show_charts_simulator(simulator):
 	stats_t, stats_s, stats_v, stats_a, stats_j = simulator.stats_t, simulator.stats_s, simulator.stats_v, simulator.stats_a, simulator.stats_j
 	datasets = get_datasets(stats_t, stats_s, stats_v, stats_a, stats_j)
 	plot_datasets(datasets)
+
+
+def setup_variables(variables):
+	for i, variable in enumerate(variables):
+		ax = plt.subplot(len(variables), 1, i+1)
+		ax.grid(True)
+		ax.set_title("Variable: %s" % variable.name, loc='left')
+		ax.spines['bottom'].set_position('zero')
+		ax.spines['left'].set_position('zero')
+
+		for t in variable.terms.values():
+			c = min(t.c, variable.max)
+			d = min(t.d, variable.max)
+			plt.plot([t.a, t.b, c, d], [0, t.height, t.height, 0])
+
+
+def show_vars(alg: mamdani.MamdaniAlgorithm):
+	f = plt.figure(1)
+	f.suptitle("Out variables")
+	setup_variables(alg.in_variables.values())
+
+	f = plt.figure(2)
+	f.suptitle("In Variables")
+	setup_variables(alg.out_variables.values())
+
+	plt.show()
+

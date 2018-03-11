@@ -8,27 +8,29 @@ import numpy
 # это должно сильно улучшить точность и упростить генерацию правил: мы можем аппроксимировать боковые
 # участки трапеций такими термами с высотой менее единицы
 
-class RectangleTerm:
-	def __init__(self, name, a, b, height):
+class RectangleTerm():
+	def __init__(self, name, a, d, height):
 		self.name = name
 		self.a = a
-		self.b = b
+		self.b = a
+		self.c = d
+		self.d = d
 		self.height = height
-		self.width = abs(a - b)
+		self.width = abs(a - d)
 
 		if self.width > 10e100:
 			raise ValueError("RectangleTerm width can't be infinite")
 
 	def degree(self, crisp_value):
-		if self.a <= crisp_value <= self.b:
+		if self.a <= crisp_value <= self.d:
 			return self.height
 		else:
 			return 0
 
 
 class IntervalTerm(RectangleTerm):
-	def __init__(self, name, a, b):
-		super().__init__(name, a, b, 1)
+	def __init__(self, name, a, d):
+		super().__init__(name, a, d, 1)
 
 
 class Term:
@@ -38,6 +40,7 @@ class Term:
 		self.b = b
 		self.c = c
 		self.d = d
+		self.height = 1
 
 	def degree(self, crisp_value):
 		if self.a < crisp_value < self.b:
@@ -179,6 +182,9 @@ class IntervalFuzzyValue(FuzzyValue):
 		for i, m in enumerate(self.sorted_memberships):
 			masses[i] = self.get_membership_mass(m)
 			total_mass += masses[i]
+
+		if total_mass == 0:
+			return (self.variable.max + self.variable.min)/2
 
 		half_mass = total_mass / 2
 		center = 0
