@@ -32,7 +32,7 @@ class WayConfig:
 
 	def get_effective_a(self, s, a):
 		for o in self._obstacles:
-			a = o.get_effective_a(self, s, a)
+			a = o.get_effective_a(s, a)
 
 		return a
 
@@ -138,6 +138,8 @@ class PhysModel:
 			if v[0] <= self._t:
 				self._a = v[1]
 				del self._a_queue[i]
+
+		self._a = self._way_config.get_effective_a(self._s, self._a)
 
 		self._v += self._a * self.time_quantum
 		self._s -= self._v * self.time_quantum + (self._a * self.time_quantum ** 2) / 2

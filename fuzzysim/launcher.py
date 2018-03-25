@@ -64,6 +64,12 @@ def simulate(distance, speed, latency, way_config_file, brake_controller, is_plo
 	# print(brake_module.dumb)
 
 	way_config = fuzzysim.WayConfig()
+
+	way_config._obstacles = [
+		# fuzzysim.Obstacle(62, 40, None, 0),
+		# fuzzysim.Obstacle(30, 20, -2, None)
+	]
+
 	physics = fuzzysim.PhysModel(distance, speed, way_config, latency)
 	controller = fuzzysim.CartController(physics, brake_module, 0)
 	simulator = fuzzysim.Simulator(physics, controller)
