@@ -1,14 +1,17 @@
 {
     "rules": [
         {
+            "generated":1,
             "conds": [["S",0],["V",0]],
             "concs": [["A", 1]]
         },
         {
+            "generated":1,
             "conds": [["S",0],["V",1]],
             "concs": [["A", 2]]
         },
         {
+            "generated":1,
             "conds": [["S",0],["V",2]],
             "concs": [["A", 2]]
         },
@@ -21,6 +24,7 @@
             "concs": [["A", 0]]
         },
         {
+            "generated":1,
             "conds": [["S",1],["V",2]],
             "concs": [["A", 1]]
         },
@@ -33,6 +37,7 @@
             "concs": [["A", 0]]
         },
         {
+            "generated":1,
             "conds": [["S",2],["V",2]],
             "concs": [["A", 0]]
         }

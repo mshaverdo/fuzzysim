@@ -1,5 +1,5 @@
 import csv
-import pprint
+import sys
 import operator
 import numpy
 
@@ -32,27 +32,45 @@ def generate_config(csv_file_name, terms_count, is_interval):
 		'rules': generate_rules(data, ['S', 'V'], ['A'], terms_count)
 	}
 
+	a_map = print_map(config, terms_count)
+	for s, speeds in enumerate(a_map):
+		begin = True
+		for v, a in enumerate(speeds):
+			if a != ' ':
+				begin = False
+				continue
 
-	# config = {
-	# 	'S': {
-	# 		'min': mins['S'],
-	# 		'max': maxs['S'],
-	# 		'peaks': list(numpy.arange(mins['S'] + steps['S'] / 2, maxs['S'], steps['S'])),
-	# 	},
-	# 	'V': {
-	# 		'min': mins['V'],
-	# 		'max': maxs['V'],
-	# 		'peaks': list(numpy.arange(mins['V'] + steps['V'] / 2, maxs['V'], steps['V'])),
-	# 	},
-	# 	'A': {
-	# 		'min': mins['A'],
-	# 		'max': maxs['A'],
-	# 		'peaks': list(numpy.arange(mins['A'] + steps['A'] / 2, maxs['A'], steps['A'])),
-	# 	},
-	# 	'rules': generate_rules(data, ['S', 'V'], ['A'], terms_count)
-	# }
+			if begin:
+				# a_map[s][v] = 0
+				config['rules'].append({'conds': [['S', s], ['V', v]], 'concs': [['A', 0],]})
+			else:
+				config['rules'].append({'conds': [['S', s], ['V', v]], 'concs': [['A', terms_count - 1],]})
+
+	print("\n", file=sys.stderr, sep='')
+	print_map(config, terms_count)
 
 	return config
+
+def print_map(config, terms_count):
+	a_map = []
+	for i in range(0, terms_count):
+		a_map.append([])
+		for j in range(0, terms_count):
+			a_map[i].append(' ')
+
+	for r in config['rules']:
+		m = {}
+		for c in r['conds']:
+			m[c[0]] = c[1]
+
+		v = str(r['concs'][0][1])
+		a_map[m['S']][m['V']] = v
+
+	print('S\\V', [str(i) for i in range(0, terms_count)], file=sys.stderr, sep='')
+	for i, row in enumerate(a_map):
+		print("%03d" % i, row, file=sys.stderr, sep='')
+
+	return a_map
 
 
 def get_var_config(var_max, var_min, var_step, interval):

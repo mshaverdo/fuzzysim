@@ -4,7 +4,7 @@ import fuzzysim.charts
 import json
 
 
-def load_mamdani(config_file=None):
+def load_mamdani(config_file=None, current_const_a=None):
 	if config_file is None:
 		config_file="fuzzy.json"
 
@@ -33,6 +33,11 @@ def load_mamdani(config_file=None):
 	}
 
 	config = json.load(open(config_file))
+	if current_const_a is not None:
+		src_const_a = config['V']['max'] ** 2 / (2 * config['S']['max'])
+		ratio = current_const_a / src_const_a
+		config['A']['peaks'] = [i * ratio for i in config['A']['peaks']]
+		config['A']['max'] *= ratio
 
 	in_variables = {
 		'S': get_variable('S', config['S']),
@@ -91,9 +96,16 @@ def get_rules(vars, config):
 class Controller:
 	def __init__(self):
 		self.alg = load_mamdani(None)
+		self.normalized = False
 		fuzzysim.charts.show_vars(self.alg)
 
 	def get_a(self, current_s, current_v):
+		if not self.normalized:
+			self.normalized = True
+			current_const_a = current_v ** 2 / (2 * current_s)
+			self.alg = load_mamdani(None, current_const_a)
+			fuzzysim.charts.show_vars(self.alg)
+
 		out = self.alg.process({'S': current_s, 'V': current_v})
 		return -out['A']
 

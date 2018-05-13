@@ -57,7 +57,6 @@ def plot(argv):
 	fuzzysim.charts.show_charts_csv(args.csv_file)
 
 
-
 def simulate(distance, speed, latency, way_config_file, brake_controller, is_plot_graphs, is_print_stats):
 	brake_module = importlib.import_module("brake_controller." + brake_controller)
 
