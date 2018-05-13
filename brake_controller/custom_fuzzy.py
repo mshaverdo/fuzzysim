@@ -2,6 +2,7 @@ import math
 from mamdani import Term, Variable, Rule, Cond, MamdaniAlgorithm, IntervalTerm
 import fuzzysim.charts
 import json
+import brake_controller.naive
 
 
 def load_mamdani(config_file=None, current_const_a=None):
@@ -95,19 +96,45 @@ def get_rules(vars, config):
 
 class Controller:
 	def __init__(self):
+		self.gold_controller = brake_controller.naive
+		self.gold_v = 0
+		self.gold_s = 0
+		self.gold_a = 0
 		self.alg = load_mamdani(None)
-		self.normalized = False
+		self.normalized = True
+		fuzzysim.charts.show_vars(self.alg)
+
+	def normalize(self, current_s, current_v):
+		self.normalized = True
+		current_const_a = current_v ** 2 / (2 * current_s)
+		self.alg = load_mamdani(None, current_const_a)
 		fuzzysim.charts.show_vars(self.alg)
 
 	def get_a(self, current_s, current_v):
 		if not self.normalized:
-			self.normalized = True
+			self.normalize(current_s, current_v)
+
+		if self.gold_a == 0:
+			self.gold_s = current_s
+			self.gold_v = current_v
+
+		self.process_gold()
+
+		if abs(self.gold_v - current_v) > 0.01 * self.gold_v:
 			current_const_a = current_v ** 2 / (2 * current_s)
-			self.alg = load_mamdani(None, current_const_a)
-			fuzzysim.charts.show_vars(self.alg)
+			# return math.copysign(self.gold_a, self.gold_v - current_v)
+			# return math.copysign(self.gold_controller.const_a * 2, self.gold_v - current_v)
+			# return math.copysign(current_const_a * 2, self.gold_v - current_v)
+			return min(0.0, math.copysign(current_const_a * 2, self.gold_v - current_v))
 
 		out = self.alg.process({'S': current_s, 'V': current_v})
 		return -out['A']
+
+	def process_gold(self):
+		self.gold_a = self.gold_controller.get_a(self.gold_s, self.gold_v, self.gold_a)
+
+		self.gold_v += self.gold_a * self.gold_controller.time_quantum
+		self.gold_s -= self.gold_v * self.gold_controller.time_quantum + (self.gold_a * self.gold_controller.time_quantum ** 2) / 2
 
 
 default_controller = Controller()
