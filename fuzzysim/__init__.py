@@ -70,7 +70,7 @@ class CollisionError(RuntimeError):
 
 class PhysModel:
 	time_quantum = 0.001  # seconds
-	speed_zero = 0.001  # assume platform stopped if it;s speed <= speed_zero
+	speed_zero = 0.01  # assume platform stopped if it;s speed <= speed_zero
 
 	def __init__(self, s0, v0, way_config, acceleration_lag=0):
 		"""
